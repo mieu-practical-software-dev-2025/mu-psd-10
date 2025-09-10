@@ -18,79 +18,97 @@
     <div id="app" class="container">
         <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
             <h2 class="mb-0">要約アプリ</h2>
-            <button @click="toggleTheme" class="btn btn-outline-secondary" style="width: 42px; height: 42px;">
-                <i :class="theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill'"></i>
-            </button>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">1. 出力形式を選択してください:</label>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" id="formatParagraph" value="paragraph" v-model="summaryFormat">
-                <label class="form-check-label" for="formatParagraph">
-                    文章で要約
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" id="formatBullets" value="bullets" v-model="summaryFormat">
-                <label class="form-check-label" for="formatBullets">
-                    箇条書きで要約
-                </label>
+            <div>
+                <button @click="openHistoryModal" class="btn btn-outline-secondary me-2">履歴</button>
+                <button @click="toggleTheme" class="btn btn-outline-secondary" style="width: 42px; height: 42px;">
+                    <i :class="theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill'"></i>
+                </button>
             </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">2. 要約の長さを選択してください:</label>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" id="lengthShort" value="short" v-model="summaryLength">
-                <label class="form-check-label" for="lengthShort">短く (3行程度)</label>
+        <!-- 1. 設定カード -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sliders me-2"></i>1. オプション設定</h5>
             </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" id="lengthMedium" value="medium" v-model="summaryLength">
-                <label class="form-check-label" for="lengthMedium">普通</label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" id="lengthDetailed" value="detailed" v-model="summaryLength">
-                <label class="form-check-label" for="lengthDetailed">詳しく</label>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">3. 要約したい内容を入力してください:</label>
-            <ul class="nav nav-tabs" id="inputTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-panel" type="button" role="tab" aria-controls="text-panel" aria-selected="true" @click="activeTab = 'text'">テキスト入力</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab" aria-controls="url-panel" aria-selected="false" @click="activeTab = 'url'">URL入力</button>
-                </li>
-            </ul>
-            <div class="tab-content" id="inputTabContent">
-                <div class="tab-pane fade show active" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
-                    <textarea id="inputText" class="form-control mt-3" rows="8" v-model="inputText" placeholder="ここにニュース記事や議事録などを貼り付け..."></textarea>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label fw-bold">出力形式</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="formatParagraph" value="paragraph" v-model="summaryFormat">
+                            <label class="form-check-label" for="formatParagraph">文章で要約</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="formatBullets" value="bullets" v-model="summaryFormat">
+                            <label class="form-check-label" for="formatBullets">箇条書きで要約</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">要約の長さ</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="lengthShort" value="short" v-model="summaryLength">
+                            <label class="form-check-label" for="lengthShort">短く</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="lengthMedium" value="medium" v-model="summaryLength">
+                            <label class="form-check-label" for="lengthMedium">普通</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="lengthDetailed" value="detailed" v-model="summaryLength">
+                            <label class="form-check-label" for="lengthDetailed">詳しく</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="tab-pane fade" id="url-panel" role="tabpanel" aria-labelledby="url-tab">
-                    <input type="url" id="inputUrl" class="form-control mt-3" v-model="inputUrl" placeholder="要約したい記事のURLを入力してください (例: https://example.com/article)">
+            </div>
+        </div>
+
+        <!-- 2. 入力カード -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-keyboard me-2"></i>2. 内容の入力</h5>
+            </div>
+            <div class="card-body pb-0">
+                <ul class="nav nav-tabs" id="inputTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-panel" type="button" role="tab" aria-controls="text-panel" aria-selected="true" @click="activeTab = 'text'"><i class="bi bi-textarea-t me-1"></i>テキスト入力</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab" aria-controls="url-panel" aria-selected="false" @click="activeTab = 'url'"><i class="bi bi-link-45deg me-1"></i>URL入力</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="inputTabContent">
+                    <div class="tab-pane fade show active" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
+                        <textarea id="inputText" class="form-control mt-3" rows="8" v-model="inputText" placeholder="ここにニュース記事などを貼り付け..."></textarea>
+                    </div>
+                    <div class="tab-pane fade" id="url-panel" role="tabpanel" aria-labelledby="url-tab">
+                        <input type="url" id="inputUrl" class="form-control mt-3" v-model="inputUrl" placeholder="要約したい記事のURLを入力してください (例: https://example.com/article)">
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="mb-3">
+        <div class="d-grid gap-2 mb-4">
             <button @click="execute" class="btn btn-primary w-100" :disabled="isLoading">
                 <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 {{ isLoading ? '処理中...' : '要約を実行' }}
             </button>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="d-flex align-items-baseline">
-                <h3 class="mb-0 me-3">結果:</h3>
-                <span v-if="resultCharCount > 0" class="text-muted">文字数: {{ resultCharCount }}</span>
+        <!-- 3. 結果カード -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-check2-circle me-2"></i>3. 結果</h5>
+                <div>
+                    <span v-if="resultCharCount > 0" class="text-muted me-3 small">文字数: {{ resultCharCount }}</span>
+                    <button class="btn btn-sm btn-secondary" @click="copyResult" :disabled="!resultText || resultText.startsWith('エラー:') || resultText.startsWith('ここに')"><i class="bi bi-clipboard me-1"></i>コピー</button>
+                </div>
             </div>
-            <button class="btn btn-sm btn-secondary" @click="copyResult" :disabled="!resultText || resultText.startsWith('エラー:') || resultText.startsWith('ここに')">コピー</button>
-        </div>
-        <div class="result-area p-3 border rounded" :class="{ 'alert alert-info': resultText && !resultText.startsWith('エラー:'), 'alert alert-danger': resultText.startsWith('エラー:') }">
-            <pre style="white-space: pre-wrap;">{{ resultText }}</pre>
+            <div class="card-body">
+                <div class="result-area p-3 rounded" :class="{ 'alert alert-info': resultText && !resultText.startsWith('エラー:'), 'alert alert-danger': resultText.startsWith('エラー:') }">
+                    <pre style="white-space: pre-wrap; margin-bottom: 0;">{{ resultText }}</pre>
+                </div>
+            </div>
         </div>
 
         <!-- Toast Container -->
@@ -101,6 +119,39 @@
                     <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
                 <div class="toast-body" v-text="toastMessage"></div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="historyModalLabel">要約履歴</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="history.length === 0" class="text-center text-muted">
+                            履歴はありません。
+                        </div>
+                        <ul v-else class="list-group">
+                            <li v-for="item in history" :key="item.id" class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="me-3" style="flex-grow: 1; min-width: 0;">
+                                    <small class="text-muted">{{ new Date(item.id).toLocaleString() }}</small>
+                                    <p class="mb-1 text-truncate"><strong>入力:</strong> {{ item.input }}</p>
+                                    <p class="mb-0 text-truncate text-muted"><strong>結果:</strong> {{ item.output }}</p>
+                                </div>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" @click="applyHistory(item)">復元</button>
+                                    <button class="btn btn-sm btn-outline-danger" @click="deleteHistoryItem(item.id)">削除</button>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" @click="clearAllHistory" :disabled="history.length === 0">全履歴を削除</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -120,7 +171,10 @@
                     isLoading: false, // 処理中フラグ
                     theme: 'light', // 'light' or 'dark'
                     toastInstance: null,
-                    toastMessage: ''
+                    toastMessage: '',
+                    history: [], // 履歴を格納する配列
+                    historyModalInstance: null,
+                    maxHistorySize: 20 // 履歴の最大保存件数
                 };
             },
             watch: {
@@ -152,6 +206,12 @@
             mounted() {
                 const toastEl = document.getElementById('appToast');
                 this.toastInstance = new bootstrap.Toast(toastEl);
+
+                const historyModalEl = document.getElementById('historyModal');
+                this.historyModalInstance = new bootstrap.Modal(historyModalEl);
+
+                const savedHistory = localStorage.getItem('summaryHistory');
+                if (savedHistory) this.history = JSON.parse(savedHistory);
             },
             methods: {
                 async execute() {
@@ -184,11 +244,11 @@
 
                     // Add length instruction
                     if (this.summaryLength === 'short') {
-                        context += '最も重要な点に絞って3行程度で';
-                    } else if (this.summaryLength === 'detailed') {
-                        context += '主要な論点をすべて含んだ詳細な形で';
-                    } else { // 'medium'
+                        context += 'ごく短く';
+                    } else if (this.summaryLength === 'medium') {
                         context += '簡潔に';
+                    } else if (this.summaryLength === 'detailed') {
+                        context += '詳細に';
                     }
 
                     // Add format instruction
@@ -217,6 +277,16 @@
                         const data = await response.json();
                         if (response.ok) {
                             this.resultText = data.processed_text;
+                            // 成功時に履歴を保存
+                            this.saveToHistory({
+                                type: this.activeTab,
+                                input: this.activeTab === 'text' ? this.inputText : payload.url, // 保存するURLはクリア前のもの
+                                output: data.processed_text,
+                                settings: {
+                                    format: this.summaryFormat,
+                                    length: this.summaryLength
+                                }
+                            });
                         } else {
                             this.resultText = `エラー: ${data.error || '不明なエラーが発生しました。'}`;
                         }
@@ -246,6 +316,46 @@
                 showToast(message) {
                     this.toastMessage = message;
                     this.toastInstance.show();
+                },
+                openHistoryModal() {
+                    this.historyModalInstance.show();
+                },
+                saveToHistory(item) {
+                    const newHistoryItem = {
+                        id: Date.now(), // ユニークなIDとしてタイムスタンプを使用
+                        ...item
+                    };
+                    // 新しい項目を先頭に追加
+                    this.history.unshift(newHistoryItem);
+                    // 履歴が最大件数を超えたら古いものから削除
+                    if (this.history.length > this.maxHistorySize) {
+                        this.history.pop();
+                    }
+                    localStorage.setItem('summaryHistory', JSON.stringify(this.history));
+                },
+                applyHistory(item) {
+                    this.activeTab = item.type;
+                    if (item.type === 'text') {
+                        this.inputText = item.input;
+                        this.inputUrl = '';
+                    } else {
+                        this.inputText = '';
+                        this.inputUrl = item.input;
+                    }
+                    this.resultText = item.output;
+                    this.summaryFormat = item.settings.format;
+                    this.summaryLength = item.settings.length;
+                    this.historyModalInstance.hide();
+                },
+                deleteHistoryItem(id) {
+                    this.history = this.history.filter(item => item.id !== id);
+                    localStorage.setItem('summaryHistory', JSON.stringify(this.history));
+                },
+                clearAllHistory() {
+                    if (confirm('本当にすべての履歴を削除しますか？')) {
+                        this.history = [];
+                        localStorage.removeItem('summaryHistory');
+                    }
                 }
             }
         }).mount('#app');
