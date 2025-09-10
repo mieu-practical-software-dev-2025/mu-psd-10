@@ -82,7 +82,13 @@
                         <textarea id="inputText" class="form-control mt-3" rows="8" v-model="inputText" placeholder="ここにニュース記事などを貼り付け..."></textarea>
                     </div>
                     <div class="tab-pane fade" id="url-panel" role="tabpanel" aria-labelledby="url-tab">
-                        <input type="url" id="inputUrl" class="form-control mt-3" v-model="inputUrl" placeholder="要約したい記事のURLを入力してください (例: https://example.com/article)">
+                        <!-- URL入力欄にクリアボタンを追加 -->
+                        <div class="input-group mt-3">
+                            <input type="url" id="inputUrl" class="form-control" v-model="inputUrl" placeholder="要約したい記事のURLを入力してください (例: https://example.com/article)">
+                            <button v-if="inputUrl" class="btn btn-outline-secondary" type="button" @click="clearUrl" title="クリア">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -264,9 +270,6 @@
                             payload.text = this.inputText;
                         } else {
                             payload.url = this.inputUrl;
-                            // URL入力時は、テキストエリアをクリアしておく（見た目のため）
-                            this.inputText = '';
-                            this.inputUrl = ''; // 実行後URL入力欄をクリア
                         };
 
                         const response = await fetch('/send_api', {
@@ -277,6 +280,10 @@
                         const data = await response.json();
                         if (response.ok) {
                             this.resultText = data.processed_text;
+                            // 成功時にのみ入力欄をクリア
+                            if (this.activeTab === 'url') {
+                                this.inputUrl = '';
+                            }
                             // 成功時に履歴を保存
                             this.saveToHistory({
                                 type: this.activeTab,
@@ -356,6 +363,9 @@
                         this.history = [];
                         localStorage.removeItem('summaryHistory');
                     }
+                },
+                clearUrl() {
+                    this.inputUrl = '';
                 }
             }
         }).mount('#app');
