@@ -3,30 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Application</title>
+    <title>要約アプリ</title>
     <!-- Vue.jsをCDNから読み込み -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- BootStrapをCDNから読み込み -->
-	<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+    <!-- Bootstrap 5.3+ JSをCDNから読み込み (ダークモード対応) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap 5.3+ CSSをCDNから読み込み (ダークモード対応) -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <!-- Bootstrap IconsをCDNから読み込み -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
 
     <div id="app" class="container">
-        <h2 class="mb-4">サンプルアプリ</h2>
-
-        <div class="mb-3">
-            <label for="inputText" class="form-label">テキストを入力してください:</label>
-            <textarea id="inputText" class="form-control" rows="5" v-model="inputText" placeholder="ここにテキストを入力..."></textarea>
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+            <h2 class="mb-0">要約アプリ</h2>
+            <button @click="toggleTheme" class="btn btn-outline-secondary" style="width: 42px; height: 42px;">
+                <i :class="theme === 'light' ? 'bi-moon-stars-fill' : 'bi-sun-fill'"></i>
+            </button>
         </div>
 
         <div class="mb-3">
-            <button @click="execute" class="btn btn-primary">実行</button>
-            <button @click="execute_kansai" class="btn btn-success ms-2">関西弁で実行</button>
+            <label class="form-label">1. 出力形式を選択してください:</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="formatParagraph" value="paragraph" v-model="summaryFormat">
+                <label class="form-check-label" for="formatParagraph">
+                    文章で要約
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="formatBullets" value="bullets" v-model="summaryFormat">
+                <label class="form-check-label" for="formatBullets">
+                    箇条書きで要約
+                </label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">2. 要約の長さを選択してください:</label>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="lengthShort" value="short" v-model="summaryLength">
+                <label class="form-check-label" for="lengthShort">短く (3行程度)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="lengthMedium" value="medium" v-model="summaryLength">
+                <label class="form-check-label" for="lengthMedium">普通</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="lengthDetailed" value="detailed" v-model="summaryLength">
+                <label class="form-check-label" for="lengthDetailed">詳しく</label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">3. 要約したい内容を入力してください:</label>
+            <ul class="nav nav-tabs" id="inputTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-panel" type="button" role="tab" aria-controls="text-panel" aria-selected="true" @click="activeTab = 'text'">テキスト入力</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab" aria-controls="url-panel" aria-selected="false" @click="activeTab = 'url'">URL入力</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="inputTabContent">
+                <div class="tab-pane fade show active" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
+                    <textarea id="inputText" class="form-control mt-3" rows="8" v-model="inputText" placeholder="ここにニュース記事や議事録などを貼り付け..."></textarea>
+                </div>
+                <div class="tab-pane fade" id="url-panel" role="tabpanel" aria-labelledby="url-tab">
+                    <input type="url" id="inputUrl" class="form-control mt-3" v-model="inputUrl" placeholder="要約したい記事のURLを入力してください (例: https://example.com/article)">
+                </div>
+            </div>
         </div>
         
-        <h3>結果:</h3>
+        <div class="mb-3">
+            <button @click="execute" class="btn btn-primary w-100" :disabled="isLoading">
+                <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                {{ isLoading ? '処理中...' : '要約を実行' }}
+            </button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex align-items-baseline">
+                <h3 class="mb-0 me-3">結果:</h3>
+                <span v-if="resultCharCount > 0" class="text-muted">文字数: {{ resultCharCount }}</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" @click="copyResult" :disabled="!resultText || resultText.startsWith('エラー:') || resultText.startsWith('ここに')">コピー</button>
+        </div>
         <div class="result-area p-3 border rounded" :class="{ 'alert alert-info': resultText && !resultText.startsWith('エラー:'), 'alert alert-danger': resultText.startsWith('エラー:') }">
             <pre style="white-space: pre-wrap;">{{ resultText }}</pre>
+        </div>
+
+        <!-- Toast Container -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="appToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <strong class="me-auto">通知</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body" v-text="toastMessage"></div>
+            </div>
         </div>
     </div>
 
@@ -37,23 +112,106 @@
             data() {
                 return {
                     inputText: '',
-                    resultText: 'ここに結果が表示されます。'
+                    resultText: 'ここに出力形式を選んで、文章を貼り付けて実行してください。',
+                    summaryFormat: 'paragraph', // 'paragraph' or 'bullets'
+                    summaryLength: 'medium', // 'short', 'medium', or 'detailed'
+                    inputUrl: '', // URL入力用,
+                    activeTab: 'text', // 現在アクティブなタブ ('text' or 'url')
+                    isLoading: false, // 処理中フラグ
+                    theme: 'light', // 'light' or 'dark'
+                    toastInstance: null,
+                    toastMessage: ''
                 };
             },
+            watch: {
+                theme(newTheme) {
+                    document.documentElement.setAttribute('data-bs-theme', newTheme);
+                }
+            },
+            computed: {
+                resultCharCount() {
+                    if (this.resultText && !this.resultText.startsWith('エラー:') && !this.resultText.startsWith('ここに') && !this.resultText.startsWith('処理中...')) {
+                        return this.resultText.length;
+                    }
+                    return 0;
+                }
+            },
+            created() {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    this.theme = savedTheme;
+                } else {
+                    // システムのテーマ設定を検出
+                    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    this.theme = prefersDark ? 'dark' : 'light';
+                }
+                // This is redundant due to the watcher, but ensures the theme is set on initial load
+                // It's good practice to have it here.
+                document.documentElement.setAttribute('data-bs-theme', this.theme);
+            },
+            mounted() {
+                const toastEl = document.getElementById('appToast');
+                this.toastInstance = new bootstrap.Toast(toastEl);
+            },
             methods: {
-                async sendRequest(context = null) {
-                    this.resultText = '処理中...';
-                    try {
-                        const payload = { text: this.inputText };
-                        if (context) {
-                            payload.context = context;
+                async execute() {
+                    if (this.isLoading) {
+                        return; // 処理中の場合は多重実行を防ぐ
+                    }
+
+                    // 入力チェックをアクティブなタブに応じて変更
+                    if (this.activeTab === 'text' && !this.inputText.trim()) {
+                        this.resultText = 'エラー: 要約するテキストを入力してください。';
+                        return;
+                    } else if (this.activeTab === 'url') {
+                        const url = this.inputUrl.trim();
+                        if (!url) {
+                            this.resultText = 'エラー: 要約するURLを入力してください。';
+                            return;
                         }
+                        // URL形式の簡易チェック (http/httpsから始まるか)
+                        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                            this.resultText = 'エラー: 有効なURL形式で入力してください。(http:// または https:// から始めてください)';
+                            return;
+                        }
+                    }
+
+                    this.isLoading = true;
+                    this.resultText = '処理中...';
+
+                    // Build the context based on the selected format and length
+                    let context = 'あなたは優秀な編集者です。以下の文章を、';
+
+                    // Add length instruction
+                    if (this.summaryLength === 'short') {
+                        context += '最も重要な点に絞って3行程度で';
+                    } else if (this.summaryLength === 'detailed') {
+                        context += '主要な論点をすべて含んだ詳細な形で';
+                    } else { // 'medium'
+                        context += '簡潔に';
+                    }
+
+                    // Add format instruction
+                    if (this.summaryFormat === 'paragraph') {
+                        context += '要約してください。要約文のみを出力し、前後の説明文は一切含めないでください。';
+                    } else { // 'bullets'
+                        context += '箇条書きでまとめてください。箇条書きのリストのみを出力し、前後の説明文は一切含めないでください。';
+                    }
+
+                    try {
+                        let payload = { context: context };
+                        if (this.activeTab === 'text') {
+                            payload.text = this.inputText;
+                        } else {
+                            payload.url = this.inputUrl;
+                            // URL入力時は、テキストエリアをクリアしておく（見た目のため）
+                            this.inputText = '';
+                            this.inputUrl = ''; // 実行後URL入力欄をクリア
+                        };
 
                         const response = await fetch('/send_api', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         });
                         const data = await response.json();
@@ -64,13 +222,30 @@
                         }
                     } catch (error) {
                         this.resultText = `エラー: ${error.message}`;
+                    } finally {
+                        this.isLoading = false; // 処理が完了したら必ずボタンを有効化する
                     }
                 },
-                execute() {
-                    this.sendRequest();
+                async copyResult() {
+                    // 初期テキストやエラーメッセージはコピーしない
+                    if (!this.resultText || this.resultText.startsWith('エラー:') || this.resultText.startsWith('ここに')) {
+                        return;
+                    }
+                    try {
+                        await navigator.clipboard.writeText(this.resultText);
+                        this.showToast('クリップボードにコピーしました');
+                    } catch (err) {
+                        console.error('クリップボードへのコピーに失敗しました: ', err);
+                        this.showToast('コピーに失敗しました');
+                    }
                 },
-                execute_kansai() {
-                    this.sendRequest("あなたは親切な関西人です。ユーザーからの入力に対して、必ず関西弁で、親しみやすく、そして140字以内で回答してください。");
+                toggleTheme() {
+                    this.theme = this.theme === 'light' ? 'dark' : 'light';
+                    localStorage.setItem('theme', this.theme);
+                },
+                showToast(message) {
+                    this.toastMessage = message;
+                    this.toastInstance.show();
                 }
             }
         }).mount('#app');

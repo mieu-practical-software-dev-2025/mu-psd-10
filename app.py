@@ -1,7 +1,19 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
-from openai import OpenAI # Import the OpenAI library
+from openai import OpenAI, RateLimitError # Import RateLimitError
 from dotenv import load_dotenv
+from newspaper import Article
+import nltk
+import time
+
+# newspaper3kが使用するnltkのデータをダウンロード（初回のみ）
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    # このログはサーバー起動時に一度だけ表示される可能性があります
+    print("Downloading 'punkt' for nltk...")
+    nltk.download('punkt')
+    print("'punkt' download complete.")
 
 # .envファイルから環境変数を読み込む
 load_dotenv()
@@ -54,18 +66,49 @@ def send_api():
     # POSTリクエストからJSONデータを取得
     data = request.get_json()
 
-    # 'text'フィールドがリクエストのJSONボディに存在するか確認
-    if not data or 'text' not in data:
-        app.logger.error("Request JSON is missing or does not contain 'text' field.")
-        return jsonify({"error": "Missing 'text' in request body"}), 400
+    # デバッグ用のモック応答機能
+    # テキスト入力で "DEBUG_MOCK" と入力すると、APIを消費せずに偽の応答を返す
+    if data and data.get('text') == 'DEBUG_MOCK':
+        app.logger.info("Returning a mock response for debugging.")
+        time.sleep(1) # ネットワーク遅延をシミュレート
+        return jsonify({
+            "message": "This is a mock response.",
+            "processed_text": "これはモック（偽の）応答です。API制限を消費せずに開発を続けるために使用します。UIの動作確認にご利用ください。"
+        })
 
-    received_text = data['text']
-    if not received_text.strip(): # 空文字列や空白のみの文字列でないか確認
-        app.logger.error("Received text is empty or whitespace.")
-        return jsonify({"error": "Input text cannot be empty"}), 400
+
+    received_text = ""
+
+    # 'url'フィールドが存在し、中身があるかチェック
+    if data and 'url' in data and data['url'].strip():
+        url = data['url'].strip()
+        app.logger.info(f"Received URL for summarization: {url}")
+        try:
+            # newspaper3kを使用して記事の本文を抽出
+            article = Article(url)
+            article.download()
+            article.parse()
+            received_text = article.text
+
+            if not received_text.strip():
+                app.logger.warning(f"Could not extract text from URL using newspaper3k: {url}")
+                return jsonify({"error": "URLから本文を抽出できませんでした。記事形式のページでない可能性があります。"}), 400
+
+        except Exception as e:
+            app.logger.error(f"URLの処理中に予期せぬエラーが発生しました (newspaper3k): {url}, Error: {e}")
+            return jsonify({"error": "URLの処理中に予期せぬエラーが発生しました。"}), 500
+
+    # 'url'がない場合、'text'フィールドが存在するかチェック
+    elif data and 'text' in data and data['text'].strip():
+        received_text = data['text']
     
+    # どちらも無い場合はエラー
+    else:
+        app.logger.error("Request JSON is missing 'text' or 'url' field, or they are empty.")
+        return jsonify({"error": "要約するテキストまたはURLを入力してください。"}), 400
+
     # contextがあればsystemプロンプトに設定、なければデフォルト値
-    system_prompt = "140字以内で回答してください。" # デフォルトのシステムプロンプト
+    system_prompt = "あなたは役立つアシスタントです。" # デフォルトのシステムプロンプト
     if 'context' in data and data['context'] and data['context'].strip():
         system_prompt = data['context'].strip()
         app.logger.info(f"Using custom system prompt from context: {system_prompt}")
@@ -92,6 +135,10 @@ def send_api():
             processed_text = "AIから有効な応答がありませんでした。"
             
         return jsonify({"message": "AIによってデータが処理されました。", "processed_text": processed_text})
+
+    except RateLimitError as e:
+        app.logger.warning(f"OpenRouter API rate limit exceeded: {e}")
+        return jsonify({"error": "APIの利用回数制限に達しました。時間をおいてから再度お試しください。"}), 429
 
     except Exception as e:
         app.logger.error(f"OpenRouter API call failed: {e}")
