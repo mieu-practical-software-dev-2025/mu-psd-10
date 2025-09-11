@@ -120,10 +120,13 @@ def send_api():
         # モデル名はOpenRouterで利用可能なモデルを指定してください。
         # 例: "mistralai/mistral-7b-instruct", "google/gemini-pro", "openai/gpt-3.5-turbo"
         # 詳細はOpenRouterのドキュメントを参照してください。
+
+        # Gemma 3モデルはsystemプロンプトをサポートしていないため、userメッセージに指示をまとめます。
+        full_prompt = f"{system_prompt}\n\n---\n\n{received_text}"
+
         chat_completion = client.chat.completions.create(
             messages=[ # type: ignore
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": received_text}
+                {"role": "user", "content": full_prompt}
             ], # type: ignore
             model="google/gemma-3-27b-it:free", 
         )
